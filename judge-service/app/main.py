@@ -50,10 +50,6 @@ app.add_middleware(
 )
 
 
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
 def _iso(dt: datetime | None) -> str | None:
     if dt is None:
         return None
@@ -79,18 +75,10 @@ def _battle_state_message(room: BattleRoom, your_player_id: str) -> dict:
     }
 
 
-# ---------------------------------------------------------------------------
-# Health
-# ---------------------------------------------------------------------------
-
 @app.get("/health", response_model=HealthResponse)
 async def health():
     return HealthResponse(status="ok")
 
-
-# ---------------------------------------------------------------------------
-# POST /battles  — create a new battle room
-# ---------------------------------------------------------------------------
 
 @app.post("/battles", response_model=CreateBattleResponse, status_code=201)
 async def create_battle_endpoint(body: CreateBattleRequest):
@@ -103,10 +91,6 @@ async def create_battle_endpoint(body: CreateBattleRequest):
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /battles/join  — second player joins
-# ---------------------------------------------------------------------------
-
 @app.post("/battles/join", response_model=JoinBattleResponse)
 async def join_battle_endpoint(body: JoinBattleRequest):
     try:
@@ -116,7 +100,6 @@ async def join_battle_endpoint(body: JoinBattleRequest):
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
 
-    # Notify player 1 that an opponent joined
     await manager.broadcast(
         room.battle_id,
         {
@@ -125,7 +108,6 @@ async def join_battle_endpoint(body: JoinBattleRequest):
         },
     )
 
-    # Notify both players that the battle has started
     await manager.broadcast(
         room.battle_id,
         {
@@ -141,10 +123,6 @@ async def join_battle_endpoint(body: JoinBattleRequest):
         status=room.status,
     )
 
-
-# ---------------------------------------------------------------------------
-# GET /battles/{battle_id}/problem  — fetch problem (no hidden test cases)
-# ---------------------------------------------------------------------------
 
 @app.get("/battles/{battle_id}/problem", response_model=ProblemResponse)
 async def get_problem(battle_id: str):
@@ -168,10 +146,6 @@ async def get_problem(battle_id: str):
     )
 
 
-# ---------------------------------------------------------------------------
-# POST /battles/{battle_id}/submit  — submit solution
-# ---------------------------------------------------------------------------
-
 @app.post("/battles/{battle_id}/submit", response_model=SubmitResponse, status_code=202)
 async def submit_solution(battle_id: str, body: SubmitRequest):
     room = get_battle(battle_id)
@@ -194,7 +168,6 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
     submission_id = str(uuid.uuid4())
     submitted_at = _iso(datetime.now(timezone.utc))
 
-    # Broadcast: submission received
     await manager.broadcast(
         battle_id,
         {
@@ -204,7 +177,6 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
         },
     )
 
-    # Build orchestrator payload
     problem = room_problem(room)
     orchestrator_payload = {
         "code": body.code,
@@ -222,15 +194,12 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
         "memory_limit_mb": problem["memory_limit_mb"],
     }
 
-    # Compute a safe timeout: each test case can take up to (limit + 3) seconds,
-    # times the number of cases, plus 15 s of overhead.
     time_limit_s = problem["time_limit_ms"] / 1000
     num_cases = len(problem["test_cases"])
     exec_timeout = (time_limit_s + 3) * num_cases + 15
 
     visible_ids = {tc["id"] for tc in problem["visible_test_cases"]}
 
-    # Call orchestrator (async, awaited)
     orchestrator_data = None
     exec_error: str | None = None
     try:
@@ -248,7 +217,6 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
         exec_error = "Execution service error"
         logger.error("Orchestrator error for battle=%s: %s", battle_id, exc)
 
-    # If the orchestrator call failed, synthesise all-failed results and broadcast them
     if exec_error is not None:
         error_results = [
             {
@@ -281,7 +249,6 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
             })
         return SubmitResponse(submission_id=submission_id, status="queued")
 
-    # Build visible-aware test result list
     raw_results = orchestrator_data.get("results", [])
 
     enriched_results = [
@@ -308,15 +275,12 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
         "test_results": enriched_results,
     }
 
-    # Broadcast: submission result
     await manager.broadcast(battle_id, result_message)
 
-    # Determine if battle should end
     winner_id = record_submission_result(room, player, passed_cases, result_message)
 
     if winner_id is not None:
-        from .battle_manager import get_player as _gp
-        winner_player = _gp(room, winner_id)
+        winner_player = get_player(room, winner_id)
         reason = "all_passed" if passed_cases == total_cases else "most_cases"
 
         await manager.broadcast(
@@ -332,17 +296,8 @@ async def submit_solution(battle_id: str, body: SubmitRequest):
     return SubmitResponse(submission_id=submission_id, status="queued")
 
 
-# ---------------------------------------------------------------------------
-# GET /battles/{battle_id}/results/{player_id}  — full post-battle breakdown
-# ---------------------------------------------------------------------------
-
 @app.get("/battles/{battle_id}/results/{player_id}")
 async def get_full_results(battle_id: str, player_id: str):
-    """
-    Available only after the battle finishes.
-    Returns all 10 test cases with input_display merged with the player's
-    submission results so the results page can show exactly what went wrong.
-    """
     room = get_battle(battle_id)
     if room is None:
         raise HTTPException(status_code=404, detail="Battle not found.")
@@ -356,7 +311,6 @@ async def get_full_results(battle_id: str, player_id: str):
     problem = room_problem(room)
     visible_ids = {tc["id"] for tc in problem["visible_test_cases"]}
 
-    # Build lookup of submission results by case_id
     sub_by_id: dict = {}
     if player.submission_result:
         for r in player.submission_result.get("test_results", []):
@@ -373,7 +327,7 @@ async def get_full_results(battle_id: str, player_id: str):
             "input_display": _fmt_args(tc["input_args"]),
             "expected_output": tc["expected_output"],
             "visible": tc["id"] in visible_ids,
-            "passed": sub.get("passed"),             # None if never submitted
+            "passed": sub.get("passed"),
             "actual_output": sub.get("actual_output"),
             "execution_time_ms": sub.get("execution_time_ms"),
             "error": sub.get("error"),
@@ -386,16 +340,8 @@ async def get_full_results(battle_id: str, player_id: str):
     }
 
 
-# ---------------------------------------------------------------------------
-# POST /battles/{battle_id}/run  — run against visible test cases only
-# ---------------------------------------------------------------------------
-
 @app.post("/battles/{battle_id}/run")
 async def run_code(battle_id: str, body: SubmitRequest):
-    """
-    Runs the player's code against the 3 visible test cases only.
-    Unlimited calls, no battle state change, no WebSocket broadcast.
-    """
     room = get_battle(battle_id)
     if room is None:
         raise HTTPException(status_code=404, detail="Battle not found.")
@@ -463,17 +409,8 @@ async def run_code(battle_id: str, body: SubmitRequest):
     return {"results": results, "passed": sum(1 for r in results if r["passed"]), "total": len(results)}
 
 
-# ---------------------------------------------------------------------------
-# POST /battles/{battle_id}/end  — force battle resolution at timer expiry
-# ---------------------------------------------------------------------------
-
 @app.post("/battles/{battle_id}/end")
 async def end_battle(battle_id: str, body: EndBattleRequest):
-    """
-    Called by the frontend when the client-side timer hits zero.
-    Resolves the battle based on whoever passed the most cases.
-    Safe to call multiple times (no-op if already finished).
-    """
     room = get_battle(battle_id)
     if room is None:
         raise HTTPException(status_code=404, detail="Battle not found.")
@@ -481,11 +418,10 @@ async def end_battle(battle_id: str, body: EndBattleRequest):
     if room.status == "finished":
         return {"status": "already_finished"}
 
-    # Pick the player with the most passed cases; ties go to whoever submitted first.
-    # If nobody submitted, winner_player_id is empty (draw).
     if not room.players:
         return {"status": "no_players"}
 
+    # Ties go to whoever passed the most cases; if nobody submitted, no winner.
     best = max(room.players, key=lambda p: p.passed_cases)
     room.status = "finished"
     room.winner_id = best.player_id if best.passed_cases > 0 else None
@@ -499,10 +435,6 @@ async def end_battle(battle_id: str, body: EndBattleRequest):
 
     return {"status": "ended"}
 
-
-# ---------------------------------------------------------------------------
-# WebSocket  WS /ws/{battle_id}/{player_id}
-# ---------------------------------------------------------------------------
 
 @app.websocket("/ws/{battle_id}/{player_id}")
 async def websocket_endpoint(ws: WebSocket, battle_id: str, player_id: str):
@@ -518,7 +450,6 @@ async def websocket_endpoint(ws: WebSocket, battle_id: str, player_id: str):
 
     await manager.connect(battle_id, player_id, ws)
 
-    # Send current battle state immediately on connect
     await manager.send_to(
         battle_id,
         player_id,
@@ -526,10 +457,9 @@ async def websocket_endpoint(ws: WebSocket, battle_id: str, player_id: str):
     )
 
     try:
-        # Keep the connection alive; clients only receive — no inbound messages expected
+        # Read and discard any frames the client sends so the connection
+        # doesn't stall on certain proxies.
         while True:
-            # We still need to read (and discard) any frames the client may send
-            # so that the connection doesn't stall on certain proxies.
             await ws.receive_text()
     except WebSocketDisconnect:
         logger.info("WS disconnected gracefully: battle=%s player=%s", battle_id, player_id)

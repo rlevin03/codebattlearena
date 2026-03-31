@@ -1,8 +1,6 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import List
 
-
-# --- Request bodies ---
 
 class CreateBattleRequest(BaseModel):
     player_name: str
@@ -16,10 +14,8 @@ class JoinBattleRequest(BaseModel):
 class SubmitRequest(BaseModel):
     player_id: str
     code: str
-    language: str  # python | javascript | java
+    language: str
 
-
-# --- Response models ---
 
 class CreateBattleResponse(BaseModel):
     battle_id: str
@@ -46,8 +42,6 @@ class EndBattleRequest(BaseModel):
 class HealthResponse(BaseModel):
     status: str
 
-
-# --- Problem models ---
 
 class VisibleTestCase(BaseModel):
     id: int

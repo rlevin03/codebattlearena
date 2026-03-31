@@ -35,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 @Service
 public class DockerExecutionService {
@@ -69,18 +68,16 @@ public class DockerExecutionService {
 
             dockerClient = DockerClientImpl.getInstance(config, httpClient);
 
-            // Verify connectivity
             dockerClient.pingCmd().exec();
             log.info("Docker client connected successfully");
 
-            // Pre-pull runner images so first execution doesn't time out
             List<String> images = List.of("python:3.11-slim", "node:20-slim", "eclipse-temurin:21-jdk-alpine");
             for (String image : images) {
                 ensureImagePresent(image);
             }
         } catch (Exception e) {
             log.error("Failed to connect to Docker daemon at {}: {}", dockerHost, e.getMessage());
-            // Don't throw — let health check surface the issue
+            // Don't throw — let the health check surface the issue
         }
     }
 
@@ -112,10 +109,6 @@ public class DockerExecutionService {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Public API
-    // -------------------------------------------------------------------------
-
     public ExecutionResponse execute(ExecutionRequest request) {
         if (dockerClient == null) {
             throw new IllegalStateException("Docker client is not available");
@@ -133,38 +126,29 @@ public class DockerExecutionService {
         return new ExecutionResponse(executionId, results, totalMs);
     }
 
-    // -------------------------------------------------------------------------
-    // Per-test-case execution
-    // -------------------------------------------------------------------------
-
     private TestCaseResult executeTestCase(ExecutionRequest request, TestCase testCase) {
         long start = System.currentTimeMillis();
         String containerId = null;
 
         try {
-            // 1. Build the full source file
             String source = templateService.buildSource(
                     request.getLanguage(),
                     request.getCode(),
                     request.getFunctionName()
             );
 
-            // 2. Base64-encode the source
             String encodedCode = Base64.getEncoder().encodeToString(
                     source.getBytes(StandardCharsets.UTF_8)
             );
 
-            // 3. Serialize args
             String serializedArgs = templateService.serializeArgs(
                     request.getLanguage(),
                     testCase.getInputArgs()
             );
 
-            // 4. Build container command
             String[] cmd = templateService.buildContainerCommand(request.getLanguage());
             String image = templateService.getImage(request.getLanguage());
 
-            // 5. Configure resource limits
             long memoryBytes = (long) request.getMemoryLimitMb() * 1024 * 1024;
             HostConfig hostConfig = HostConfig.newHostConfig()
                     .withMemory(memoryBytes)
@@ -173,9 +157,8 @@ public class DockerExecutionService {
                     .withNetworkMode("none")
                     .withReadonlyRootfs(true)
                     .withTmpFs(Map.of("/tmp", "size=64m,mode=1777"))
-                    .withAutoRemove(false);               // we remove manually after log capture
+                    .withAutoRemove(false);               // removed manually after log capture
 
-            // 6. Create the container
             CreateContainerResponse container = dockerClient.createContainerCmd(image)
                     .withCmd(cmd)
                     .withEnv(
@@ -189,10 +172,8 @@ public class DockerExecutionService {
             containerId = container.getId();
             log.info("Created container {} for test case {}", containerId.substring(0, 12), testCase.getId());
 
-            // 7. Start the container
             dockerClient.startContainerCmd(containerId).exec();
 
-            // 8. Wait for exit with timeout
             int timeoutSeconds = request.getTimeLimitSeconds() + 2;
             int exitCode;
             try {
@@ -200,7 +181,6 @@ public class DockerExecutionService {
                         .exec(new WaitContainerResultCallback())
                         .awaitStatusCode(timeoutSeconds, TimeUnit.SECONDS);
             } catch (Exception e) {
-                // Timeout or interrupted — kill the container
                 log.warn("Container {} timed out for test case {}", containerId.substring(0, 12), testCase.getId());
                 forceRemoveContainer(containerId);
                 long elapsed = System.currentTimeMillis() - start;
@@ -211,17 +191,14 @@ public class DockerExecutionService {
                 );
             }
 
-            // 9. Capture stdout and stderr
             String stdout = captureStream(containerId, true,  timeoutSeconds);
             String stderr = captureStream(containerId, false, timeoutSeconds);
 
-            // 10. Remove container
             safeRemoveContainer(containerId);
             containerId = null;
 
             long elapsed = System.currentTimeMillis() - start;
 
-            // 11. Evaluate result
             if (exitCode != 0) {
                 String errorMsg = stderr.isBlank() ? "Process exited with code " + exitCode : stderr.trim();
                 return new TestCaseResult(
@@ -254,13 +231,6 @@ public class DockerExecutionService {
         }
     }
 
-    // -------------------------------------------------------------------------
-    // Log capture
-    // -------------------------------------------------------------------------
-
-    /**
-     * Captures stdout or stderr from a stopped container.
-     */
     private String captureStream(String containerId, boolean stdout, int timeoutSeconds) {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
@@ -287,10 +257,6 @@ public class DockerExecutionService {
 
         return baos.toString(StandardCharsets.UTF_8);
     }
-
-    // -------------------------------------------------------------------------
-    // Container cleanup helpers
-    // -------------------------------------------------------------------------
 
     private void safeRemoveContainer(String containerId) {
         try {

@@ -55,7 +55,6 @@ export default function BattleHeader({
 
   return (
     <header className="h-12 bg-surface border-b border-border flex items-center px-4 gap-4 shrink-0">
-      {/* Brand */}
       <div className="flex items-center gap-2 mr-2">
         <svg
           width="20"
@@ -78,10 +77,8 @@ export default function BattleHeader({
         </span>
       </div>
 
-      {/* Divider */}
       <div className="h-5 w-px bg-border" />
 
-      {/* Timer */}
       <div className="flex items-center gap-1.5">
         <svg
           width="13"
@@ -114,10 +111,8 @@ export default function BattleHeader({
         </span>
       </div>
 
-      {/* Divider */}
       <div className="h-5 w-px bg-border" />
 
-      {/* Players */}
       <div className="flex items-center gap-4 flex-1">
         {me && <PlayerChip player={me} isMe />}
         <span className="text-muted text-xs font-medium">vs</span>

@@ -27,7 +27,6 @@ export default function ResultsPanel({
         collapsed ? 'h-10' : 'h-52'
       }`}
     >
-      {/* Panel header */}
       <div
         className="h-10 flex items-center justify-between px-4 cursor-pointer hover:bg-white/5 shrink-0"
         onClick={() => setCollapsed((c) => !c)}
@@ -87,7 +86,6 @@ export default function ResultsPanel({
         </svg>
       </div>
 
-      {/* Panel body */}
       {!collapsed && (
         <div className="flex-1 overflow-y-auto px-4 pb-4">
           {!hasResults && !isWaiting && (
@@ -110,7 +108,6 @@ export default function ResultsPanel({
                         : 'border-fail/20 bg-fail/5'
                     }`}
                   >
-                    {/* Status icon */}
                     {result.passed ? (
                       <svg
                         width="14"
@@ -146,17 +143,14 @@ export default function ResultsPanel({
                       </svg>
                     )}
 
-                    {/* Case label */}
                     <span className="text-text text-xs font-medium flex-1">
                       {result.visible ? `Case ${result.case_id}` : `Hidden Case ${result.case_id}`}
                     </span>
 
-                    {/* Time */}
                     <span className="text-muted text-xs font-mono">
                       {result.execution_time_ms}ms
                     </span>
 
-                    {/* Chevron */}
                     {!result.passed && (
                       <svg
                         width="12"
@@ -179,7 +173,6 @@ export default function ResultsPanel({
                     )}
                   </button>
 
-                  {/* Expanded error detail */}
                   {expandedCase === result.case_id && !result.passed && (
                     <div className="ml-4 mt-1 mb-1 bg-bg border border-border rounded p-3 flex flex-col gap-2">
                       {result.error ? (

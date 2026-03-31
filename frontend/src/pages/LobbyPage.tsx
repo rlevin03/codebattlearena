@@ -80,7 +80,6 @@ export default function LobbyPage({ onBattleJoined }: LobbyPageProps) {
 
   return (
     <div className="min-h-screen bg-bg flex flex-col items-center justify-center px-4">
-      {/* Logo / Brand */}
       <div className="mb-10 text-center">
         <div className="flex items-center justify-center gap-2 mb-2">
           <svg
@@ -106,13 +105,11 @@ export default function LobbyPage({ onBattleJoined }: LobbyPageProps) {
         <p className="text-muted text-sm">Competitive programming. Head to head. Real time.</p>
       </div>
 
-      {/* Card */}
       <div className="w-full max-w-md bg-surface border border-border rounded">
         {mode === 'home' && (
           <div className="p-6">
             <h2 className="text-text font-semibold text-lg mb-5">Enter the Arena</h2>
 
-            {/* Name input */}
             <div className="mb-4">
               <label className="block text-muted text-xs font-medium mb-1.5 uppercase tracking-wide">
                 Your Name

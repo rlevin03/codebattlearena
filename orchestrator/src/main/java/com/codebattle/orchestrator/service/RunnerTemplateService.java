@@ -6,18 +6,10 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Builds the complete source file (user code + runner harness) for each language.
- * Also serializes test-case arguments into the format each language runner expects.
- */
 @Service
 public class RunnerTemplateService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-
-    // -------------------------------------------------------------------------
-    // Source-file assembly
-    // -------------------------------------------------------------------------
 
     public String buildSource(String language, String userCode, String functionName) {
         return switch (language.toLowerCase()) {
@@ -27,10 +19,6 @@ public class RunnerTemplateService {
             default -> throw new IllegalArgumentException("Unsupported language: " + language);
         };
     }
-
-    // -------------------------------------------------------------------------
-    // Python
-    // -------------------------------------------------------------------------
 
     private String buildPythonSource(String userCode, String functionName) {
         return userCode
@@ -48,10 +36,6 @@ public class RunnerTemplateService {
             + "    print(_serialize(result))\n";
     }
 
-    // -------------------------------------------------------------------------
-    // JavaScript
-    // -------------------------------------------------------------------------
-
     private String buildJavaScriptSource(String userCode, String functionName) {
         return userCode
             + "\n\nlet input = '';\n"
@@ -67,10 +51,6 @@ public class RunnerTemplateService {
             + "});\n";
     }
 
-    // -------------------------------------------------------------------------
-    // Java
-    // -------------------------------------------------------------------------
-
     private String buildJavaSource(String userCode, String functionName) {
         String dispatcher = JAVA_DISPATCHERS.getOrDefault(
                 functionName,
@@ -84,8 +64,6 @@ import java.io.*;
 public class Solution {
 
 """ + userCode + """
-
-    // ---- Runner helpers (injected by orchestrator) ----
 
     private static int[] parseIntArray(String line) {
         line = line.trim();
@@ -112,14 +90,8 @@ public class Solution {
 """;
     }
 
-    /**
-     * Hard-coded dispatchers for the five known MVP problem signatures.
-     * Each dispatcher reads its arguments from stdin (one line per argument),
-     * calls the solution method, and prints the result.
-     */
     private static final Map<String, String> JAVA_DISPATCHERS = Map.of(
 
-        // twoSum(int[] nums, int target) -> int[]
         "twoSum", """
         String numsLine = br.readLine().trim();
         String targetLine = br.readLine().trim();
@@ -129,21 +101,18 @@ public class Solution {
         System.out.println("[" + result[0] + ", " + result[1] + "]");
 """,
 
-        // isValid(String s) -> boolean
         "isValid", """
         String s = br.readLine().trim();
         boolean result = sol.isValid(s);
         System.out.println(result);
 """,
 
-        // fib(int n) -> int
         "fib", """
         int n = Integer.parseInt(br.readLine().trim());
         int result = sol.fib(n);
         System.out.println(result);
 """,
 
-        // maxProfit(int[] prices) -> int
         "maxProfit", """
         String pricesLine = br.readLine().trim();
         int[] prices = parseIntArray(pricesLine);
@@ -151,7 +120,6 @@ public class Solution {
         System.out.println(result);
 """,
 
-        // longestCommonPrefix(String[] strs) -> String
         "longestCommonPrefix", """
         String line = br.readLine().trim();
         String[] strs = parseStringArray(line);
@@ -160,27 +128,12 @@ public class Solution {
 """
     );
 
-    /**
-     * Fallback dispatcher for unknown functions: read one line from stdin and
-     * print it back as an error so the test is clearly marked failed rather
-     * than silently hanging.
-     */
     private String buildDefaultJavaDispatcher(String functionName) {
         return "        System.err.println(\"No dispatcher registered for function: "
             + functionName + "\");\n"
             + "        System.exit(1);\n";
     }
 
-    // -------------------------------------------------------------------------
-    // Argument serialization
-    // -------------------------------------------------------------------------
-
-    /**
-     * Serializes test-case arguments to the stdin format consumed by the runner.
-     *
-     * Python / JavaScript: a single JSON array  → "[arg1, arg2, ...]"
-     * Java:                one line per argument → flat int/string representation
-     */
     public String serializeArgs(String language, List<Object> inputArgs) {
         return switch (language.toLowerCase()) {
             case "python", "javascript" -> serializeArgsJson(inputArgs);
@@ -197,12 +150,6 @@ public class Solution {
         }
     }
 
-    /**
-     * Java line-per-argument format:
-     * - Lists/arrays  → space-separated ints (e.g. "2 7 11 15")
-     * - String lists  → comma-separated quoted values (e.g. "flower flow flight")
-     * - Primitives    → toString
-     */
     @SuppressWarnings("unchecked")
     private String serializeArgsJavaLines(List<Object> inputArgs) {
         StringBuilder sb = new StringBuilder();
@@ -210,7 +157,6 @@ public class Solution {
             if (sb.length() > 0) sb.append('\n');
             if (arg instanceof List<?> list) {
                 if (!list.isEmpty() && list.get(0) instanceof String) {
-                    // String array: space-separated, each element unquoted
                     StringBuilder items = new StringBuilder();
                     for (Object item : list) {
                         if (items.length() > 0) items.append(' ');
@@ -218,7 +164,6 @@ public class Solution {
                     }
                     sb.append(items);
                 } else {
-                    // Numeric array: space-separated numbers
                     StringBuilder items = new StringBuilder();
                     for (Object item : list) {
                         if (items.length() > 0) items.append(' ');
@@ -231,7 +176,6 @@ public class Solution {
                     sb.append(items);
                 }
             } else if (arg instanceof Double d && d == Math.floor(d)) {
-                // Jackson deserializes integers as Double in Object context
                 sb.append(d.longValue());
             } else {
                 sb.append(arg.toString());
@@ -240,15 +184,6 @@ public class Solution {
         return sb.toString();
     }
 
-    // -------------------------------------------------------------------------
-    // Container shell commands
-    // -------------------------------------------------------------------------
-
-    /**
-     * Returns the shell command string to pass to the container's entrypoint.
-     * The command decodes CODE from base64 into /tmp/solution.<ext>, then pipes
-     * ARGS into the runtime.
-     */
     public String[] buildContainerCommand(String language) {
         String cmd = switch (language.toLowerCase()) {
             case "python" ->
@@ -266,9 +201,6 @@ public class Solution {
         return new String[]{"sh", "-c", cmd};
     }
 
-    /**
-     * Returns the Docker image to use for the given language.
-     */
     public String getImage(String language) {
         return switch (language.toLowerCase()) {
             case "python"     -> "python:3.11-slim";

@@ -22,8 +22,6 @@ interface BattlePageProps {
     winnerName: string,
     winnerPlayerId: string,
     myPlayerId: string,
-    myResults: TestResult[] | null,
-    opponentResults: TestResult[] | null,
     players: PlayerState[]
   ) => void;
 }
@@ -141,14 +139,7 @@ export default function BattlePage({
           }
           // Give a brief moment for results to render before transitioning
           setTimeout(() => {
-            onBattleEnd(
-              msg.winner_name,
-              msg.winner_player_id,
-              playerId,
-              myResults,
-              opponentResults,
-              players
-            );
+            onBattleEnd(msg.winner_name, msg.winner_player_id, playerId, players);
           }, 1500);
           break;
         }
@@ -252,12 +243,10 @@ export default function BattlePage({
         </div>
       ) : (
         <div className="flex flex-1 overflow-hidden">
-          {/* Problem panel — 40% */}
           <div className="w-2/5 shrink-0 overflow-hidden">
             <ProblemPanel problem={problem} />
           </div>
 
-          {/* Editor + results — 60% */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <div className="flex-1 overflow-hidden">
               <EditorPanel

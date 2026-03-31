@@ -74,9 +74,7 @@ export default function EditorPanel({
 
   return (
     <div className="flex flex-col h-full bg-bg">
-      {/* Toolbar */}
       <div className="h-10 shrink-0 border-b border-border bg-surface flex items-center justify-between px-3 gap-3">
-        {/* Language selector */}
         <div className="flex items-center gap-0.5">
           {LANGUAGES.map((lang) => (
             <button
@@ -93,9 +91,7 @@ export default function EditorPanel({
           ))}
         </div>
 
-        {/* Run + Submit */}
         <div className="flex items-center gap-2">
-          {/* Run button */}
           <button
             onClick={handleRun}
             disabled={running || submitting || submitted || !problem}
@@ -118,7 +114,6 @@ export default function EditorPanel({
             )}
           </button>
 
-          {/* Submit button */}
           <button
             onClick={handleSubmit}
             disabled={submitting || submitted || running || !problem}
@@ -151,7 +146,6 @@ export default function EditorPanel({
         </div>
       </div>
 
-      {/* Monaco Editor */}
       <div className="flex-1 overflow-hidden">
         {problem ? (
           <Editor

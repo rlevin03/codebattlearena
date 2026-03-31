@@ -11,9 +11,6 @@ Each problem has:
 from typing import List, Dict, Any
 
 PROBLEMS: List[Dict[str, Any]] = [
-    # ------------------------------------------------------------------ #
-    # Problem 1 – Two Sum (easy)                                          #
-    # ------------------------------------------------------------------ #
     {
         "problem_id": 1,
         "title": "Two Sum",
@@ -62,9 +59,6 @@ PROBLEMS: List[Dict[str, Any]] = [
         "memory_limit_mb": 128,
     },
 
-    # ------------------------------------------------------------------ #
-    # Problem 2 – Valid Parentheses (easy)                                #
-    # ------------------------------------------------------------------ #
     {
         "problem_id": 2,
         "title": "Valid Parentheses",
@@ -116,9 +110,6 @@ PROBLEMS: List[Dict[str, Any]] = [
         "memory_limit_mb": 128,
     },
 
-    # ------------------------------------------------------------------ #
-    # Problem 3 – Nth Fibonacci (easy)                                    #
-    # ------------------------------------------------------------------ #
     {
         "problem_id": 3,
         "title": "Nth Fibonacci Number",
@@ -170,9 +161,6 @@ PROBLEMS: List[Dict[str, Any]] = [
         "memory_limit_mb": 128,
     },
 
-    # ------------------------------------------------------------------ #
-    # Problem 4 – Best Time to Buy and Sell Stock (medium)                #
-    # ------------------------------------------------------------------ #
     {
         "problem_id": 4,
         "title": "Best Time to Buy and Sell Stock",
@@ -220,9 +208,6 @@ PROBLEMS: List[Dict[str, Any]] = [
         "memory_limit_mb": 128,
     },
 
-    # ------------------------------------------------------------------ #
-    # Problem 5 – Longest Common Prefix (easy)                            #
-    # ------------------------------------------------------------------ #
     {
         "problem_id": 5,
         "title": "Longest Common Prefix",

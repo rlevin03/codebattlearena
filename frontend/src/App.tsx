@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import LobbyPage from './pages/LobbyPage';
 import BattlePage from './pages/BattlePage';
 import ResultsPage from './pages/ResultsPage';
-import type { PlayerState, TestResult } from './types/battle';
+import type { PlayerState } from './types/battle';
 
 type Screen = 'lobby' | 'battle' | 'results';
 
@@ -57,8 +57,6 @@ export default function App() {
     winnerName: string,
     winnerPlayerId: string,
     myPlayerId: string,
-    _myResults: TestResult[] | null,
-    _opponentResults: TestResult[] | null,
     players: PlayerState[],
   ) => {
     sessionStorage.removeItem(SESSION_KEY);

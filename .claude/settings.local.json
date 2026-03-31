@@ -11,7 +11,8 @@
       "Bash(node -e \"require\\(''''/c/Users/blevi/codebattlearena/frontend/node_modules/@rollup/rollup-win32-x64-msvc''''\\)\")",
       "Bash(echo \"TSC exit: $?\")",
       "Bash(echo \"Exit: $?\")",
-      "Bash(docker compose:*)"
+      "Bash(docker compose:*)",
+      "Bash(find C:Usersblevicodebattlearena/judge-service -type f -name *.py -o -name *.js -o -name *.ts)"
     ]
   }
 }

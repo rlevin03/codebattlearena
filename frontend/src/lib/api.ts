@@ -7,7 +7,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_name: playerName }),
     }).then((r) => r.json()),
-  // returns { battle_id, join_code, player_id, status }
 
   joinBattle: (joinCode: string, playerName: string) =>
     fetch('/api/battles/join', {
@@ -15,7 +14,6 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ join_code: joinCode, player_name: playerName }),
     }).then((r) => r.json()),
-  // returns { battle_id, player_id, status }
 
   getProblem: (battleId: string) =>
     fetch(`/api/battles/${battleId}/problem`).then((r) => r.json()),
